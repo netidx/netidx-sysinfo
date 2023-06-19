@@ -259,7 +259,6 @@ async fn run(opt: SysinfoOpt, cfg: Config, auth: DesiredAuth) -> Result<()> {
         PublisherBuilder::new(cfg).desired_auth(auth).bind_cfg(opt.bind).build().await?;
 
     task::block_in_place(|| sys.refresh_all());
-    // TODO: periodically refresh list of interfaces and disks, not covered by refresh_all
     let init_loadavg = sys.load_average();
 
     let total_memory = publisher
