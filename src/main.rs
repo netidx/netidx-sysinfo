@@ -7,10 +7,7 @@ use netidx::{
     resolver_client::DesiredAuth,
 };
 use netidx_tools_core::ClientParams;
-use std::{
-    collections::{hash_map::DefaultHasher, HashMap, HashSet},
-    hash::{Hash, Hasher},
-};
+use std::collections::{HashMap, HashSet};
 use structopt::StructOpt;
 use sysinfo::{DiskExt, NetworkExt, PidExt, ProcessExt, System, SystemExt};
 use tokio::{
@@ -83,12 +80,6 @@ fn update_network_interface_stats(
     Ok(())
 }
 
-fn hash_string(s: &String) -> u64 {
-    let mut hasher = DefaultHasher::new();
-    s.hash(&mut hasher);
-    hasher.finish()
-}
-
 fn update_disk_stats(
     publisher: &Publisher,
     batch: &mut UpdateBatch,
@@ -99,7 +90,7 @@ fn update_disk_stats(
     let mut latest_disks: HashSet<String> = HashSet::new();
     for disk in sys.disks() {
         let mount_point = disk.mount_point().to_str().unwrap_or("").to_string();
-        let id = hash_string(&mount_point);
+        let id = Path::escape(&mount_point);
         latest_disks.insert(mount_point.clone());
 
         let block_device = disk.name().to_str().unwrap_or("").to_string();
