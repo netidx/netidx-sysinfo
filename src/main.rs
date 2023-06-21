@@ -39,10 +39,6 @@ struct SysinfoOpt {
     host: Option<String>,
 }
 
-fn val<T: Into<Value>>(publisher: &Publisher, path: String, init: T) -> Result<Val> {
-    publisher.publish(Path::from(path), init)
-}
-
 fn update_network_interface_stats(
     publisher: &Publisher,
     batch: &mut UpdateBatch,
@@ -61,11 +57,11 @@ fn update_network_interface_stats(
                 tx.update(batch, tx_v);
             }
             None => {
-                let interface_base = format!("{}/interfaces/{}", base, interface_name);
+                let interface_base = base.append(interface_name);
                 debug!("new interface: {}", interface_base);
 
-                let rx = val(&publisher, format!("{}/rx", interface_base), rx_v)?;
-                let tx = val(&publisher, format!("{}/tx", interface_base), tx_v)?;
+                let rx = publisher.publish(interface_base.append("rx"), rx_v)?;
+                let tx = publisher.publish(interface_base.append("tx"), tx_v)?;
                 interfaces_map.insert(interface_name.clone(), (rx, tx));
             }
         }
@@ -90,7 +86,6 @@ fn update_disk_stats(
     let mut latest_disks: HashSet<String> = HashSet::new();
     for disk in sys.disks() {
         let mount_point = disk.mount_point().to_str().unwrap_or("").to_string();
-        let id = Path::escape(&mount_point);
         latest_disks.insert(mount_point.clone());
 
         let block_device = disk.name().to_str().unwrap_or("").to_string();
@@ -104,19 +99,17 @@ fn update_disk_stats(
                 avail.update(batch, avail_space);
             }
             None => {
-                let disk_base = format!("{}/disks/{}", base, id);
+                let disk_base =
+                    base.append("disks").append(&Path::escape(&mount_point.clone()));
                 debug!("new disk: {}", disk_base);
-                let mp = val(
-                    &publisher,
-                    format!("{}/mount_point", disk_base),
-                    mount_point.clone(),
-                )?;
+                let mp = publisher
+                    .publish(disk_base.append("mount_point"), mount_point.clone())?;
                 let bd =
-                    val(&publisher, format!("{}/block_device", disk_base), block_device)?;
+                    publisher.publish(disk_base.append("block_device"), block_device)?;
                 let total =
-                    val(&publisher, format!("{}/total_space", disk_base), total_space)?;
+                    publisher.publish(disk_base.append("total_space"), total_space)?;
                 let avail =
-                    val(&publisher, format!("{}/avail_space", disk_base), avail_space)?;
+                    publisher.publish(disk_base.append("avail_space"), avail_space)?;
                 disks_map.insert(mount_point, (mp, bd, total, avail));
             }
         }
@@ -184,32 +177,24 @@ fn update_procs_stats(
                 proc_stat.disk_written.update(batch, new_disk_written);
             }
             None => {
-                let proc_base = format!("{}/procs/{}", base, pid);
+                let proc_base = base.append("procs").append(&pid.to_string());
                 debug!("new proc: {}", proc_base);
 
-                let name = val(
-                    &publisher,
-                    format!("{}/name", proc_base),
-                    new_name.to_string().clone(),
-                )?;
-                let cmdline = val(
-                    &publisher,
-                    format!("{}/cmdline", proc_base),
-                    new_cmdline.clone(),
-                )?;
-                let exe = val(&publisher, format!("{}/exe", proc_base), new_exe.clone())?;
-                let uid = val(&publisher, format!("{}/uid", proc_base), new_uid)?;
-                let gid = val(&publisher, format!("{}/gid", proc_base), new_gid)?;
-                let cpu = val(&publisher, format!("{}/cpu", proc_base), new_cpu)?;
-                let vsize = val(&publisher, format!("{}/vsize", proc_base), new_vsize)?;
-                let rss = val(&publisher, format!("{}/rss", proc_base), new_rss)?;
+                let name = publisher
+                    .publish(proc_base.append("name"), new_name.to_string().clone())?;
+                let cmdline = publisher
+                    .publish(proc_base.append("cmdline"), new_cmdline.clone())?;
+                let exe = publisher.publish(proc_base.append("exe"), new_exe.clone())?;
+                let uid = publisher.publish(proc_base.append("uid"), new_uid)?;
+                let gid = publisher.publish(proc_base.append("gid"), new_gid)?;
+                let cpu = publisher.publish(proc_base.append("cpu"), new_cpu)?;
+                let vsize = publisher.publish(proc_base.append("vsize"), new_vsize)?;
+                let rss = publisher.publish(proc_base.append("rss"), new_rss)?;
                 let disk_read =
-                    val(&publisher, format!("{}/disk_read", proc_base), new_disk_read)?;
-                let disk_written = val(
-                    &publisher,
-                    format!("{}/disk_written", proc_base),
-                    new_disk_written,
-                )?;
+                    publisher.publish(proc_base.append("disk_read"), new_disk_read)?;
+                let disk_written = publisher
+                    .publish(proc_base.append("disk_written"), new_disk_written)?;
+
                 procs_map.insert(
                     pid,
                     ProcStat {
