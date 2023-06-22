@@ -57,7 +57,7 @@ fn update_network_interface_stats(
                 tx.update(batch, tx_v);
             }
             None => {
-                let interface_base = base.append(interface_name);
+                let interface_base = base.append("interfaces").append(interface_name);
                 debug!("new interface: {}", interface_base);
 
                 let rx = publisher.publish(interface_base.append("rx"), rx_v)?;
